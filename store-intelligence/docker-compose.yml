@@ -7,10 +7,18 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Persist SQLite database file
-      - ./store_intelligence.db:/store-intelligence/store_intelligence.db
-      # Mount the project directory so the container can access pos_transactions.csv and images
-      - ./:/store-intelligence
+      # Persist SQLite database between restarts
+      - db_data:/store-intelligence/store_intelligence.db
+      # Mount POS CSV so API can auto-import it on startup
+      - ./pos_transactions.csv:/store-intelligence/pos_transactions.csv:ro
     environment:
       - POS_CSV_PATH=/store-intelligence/pos_transactions.csv
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
