@@ -98,7 +98,14 @@ def main():
     # Convert events and sort chronologically
     events = []
     for item in raw_events:
-        if NORMALIZER_AVAILABLE and "event_timestamp" in item or "event_time" in item:
+        # Use normalizer if the event looks like a raw sample event (not already in our schema)
+        needs_conversion = (
+            "event_timestamp" in item
+            or "event_time" in item
+            or "queue_join_ts" in item
+            or "timestamp" not in item
+        )
+        if NORMALIZER_AVAILABLE and needs_conversion:
             evt = convert_event(item)
         else:
             evt = item.copy()
@@ -107,8 +114,13 @@ def main():
         if args.store_id:
             evt["store_id"] = args.store_id
 
-        # Parse timestamp
-        evt["_dt"] = parse_iso_timestamp(evt["timestamp"])
+        # Parse timestamp — fall back to event_timestamp if needed
+        ts_raw = evt.get("timestamp") or item.get("event_timestamp") or item.get("event_time")
+        if not ts_raw:
+            continue
+        evt["timestamp"] = ts_raw
+        evt["_dt"] = parse_iso_timestamp(ts_raw)
+
         events.append(evt)
 
     # Sort chronologically by original timestamp
