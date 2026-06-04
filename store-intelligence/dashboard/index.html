@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Purplle Store Intelligence — Real-Time Dashboard</title>
+  <meta name="description" content="Real-time retail analytics dashboard for Purplle stores — footfall, conversion funnels, zone heatmaps, and anomaly detection." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css?v=2" />
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+  <div id="heatmapTooltip" class="heatmap-tooltip"></div>
+  
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <circle cx="14" cy="14" r="14" fill="url(#logoGrad)"/>
+            <path d="M8 14c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="14" cy="14" r="2.5" fill="#fff"/>
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="28" y2="28">
+                <stop offset="0%" stop-color="#a855f7"/>
+                <stop offset="100%" stop-color="#7c3aed"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <span class="logo-name">Purplle</span>
+          <span class="logo-sub">Store Intelligence</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="store-selector">
+        <button class="store-btn active" id="btn-store1" onclick="switchStore('ST1008')">
+          <span class="store-dot"></span> Store 1
+        </button>
+        <button class="store-btn" id="btn-store2" onclick="switchStore('ST1076')">
+          <span class="store-dot"></span> Store 2
+        </button>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge" id="liveBadge">
+        <span class="pulse-dot"></span> LIVE
+      </div>
+      <div class="header-time" id="headerTime">--:--:--</div>
+      <div class="api-status" id="apiStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusLabel">Connecting…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- KPI Cards Row -->
+    <section class="kpi-row" id="kpiRow">
+      <div class="kpi-card" id="kpi-visitors">
+        <div class="kpi-icon" style="background: linear-gradient(135deg,#a855f7,#7c3aed)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-label">Unique Visitors</div>
+          <div class="kpi-value" id="val-visitors">—</div>
+          <div class="kpi-sub">Customers today (excl. staff)</div>
+        </div>
+        <div class="kpi-trend" id="trend-visitors"></div>
+      </div>
+
+      <div class="kpi-card" id="kpi-conversion">
+        <div class="kpi-icon" style="background: linear-gradient(135deg,#06b6d4,#0891b2)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-label">Conversion Rate</div>
+          <div class="kpi-value" id="val-conversion">—</div>
+          <div class="kpi-sub">Visitors who made a purchase</div>
+        </div>
+        <div class="kpi-trend" id="trend-conversion"></div>
+      </div>
+
+      <div class="kpi-card" id="kpi-queue">
+        <div class="kpi-icon" style="background: linear-gradient(135deg,#f59e0b,#d97706)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-label">Queue Depth</div>
+          <div class="kpi-value" id="val-queue">—</div>
+          <div class="kpi-sub">People in billing queue now</div>
+        </div>
+        <div class="kpi-trend" id="trend-queue"></div>
+      </div>
+
+      <div class="kpi-card" id="kpi-abandon">
+        <div class="kpi-icon" style="background: linear-gradient(135deg,#ef4444,#dc2626)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-label">Abandonment Rate</div>
+          <div class="kpi-value" id="val-abandon">—</div>
+          <div class="kpi-sub">Queue abandonments today</div>
+        </div>
+        <div class="kpi-trend" id="trend-abandon"></div>
+      </div>
+    </section>
+
+    <!-- Charts Row -->
+    <section class="charts-row">
+      <!-- Funnel -->
+      <div class="card funnel-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Conversion Funnel
+          </div>
+          <div class="card-date" id="funnelDate">—</div>
+        </div>
+        <div class="funnel-container" id="funnelContainer">
+          <div class="funnel-loading">Loading funnel data…</div>
+        </div>
+      </div>
+
+      <!-- Visitors over time / Footfall bar chart -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+            Live Metrics Feed
+          </div>
+          <span class="card-badge">Auto-refresh 5s</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="metricsChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Heatmap + Anomalies Row -->
+    <section class="bottom-row">
+      <!-- Zone Heatmap -->
+      <div class="card heatmap-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Zone Heatmap
+          </div>
+          <div class="heatmap-legend">
+            <span class="legend-dot" style="background:#1e293b"></span>Low
+            <span class="legend-dot" style="background:#6d28d9;margin-left:8px"></span>Med
+            <span class="legend-dot" style="background:#a855f7;margin-left:8px"></span>High
+          </div>
+        </div>
+        <div class="heatmap-grid" id="heatmapGrid">
+          <div class="heatmap-loading">Loading heatmap…</div>
+        </div>
+        <div class="heatmap-store-layout" id="storeLayout"></div>
+      </div>
+
+      <!-- Anomalies -->
+      <div class="card anomaly-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Active Anomalies
+          </div>
+          <span class="anomaly-count" id="anomalyCount">0</span>
+        </div>
+        <div class="anomaly-list" id="anomalyList">
+          <div class="anomaly-empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <p>No anomalies detected</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Event Stream -->
+      <div class="card events-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Event Stream
+          </div>
+          <span class="card-badge live-badge-sm"><span class="pulse-dot-sm"></span>Live</span>
+        </div>
+        <div class="event-stream" id="eventStream">
+          <div class="stream-placeholder">Waiting for events…</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Image Modal -->
+  <div id="imageModal" class="image-modal" onclick="closeImageModal(event)">
+    <span class="image-modal-close" onclick="closeImageModal(event)">&times;</span>
+    <img class="image-modal-content" id="modalImage">
+  </div>
+
+  <script src="app.js?v=2"></script>
+</body>
+</html>

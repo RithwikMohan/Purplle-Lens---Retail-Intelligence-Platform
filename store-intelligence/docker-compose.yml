@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: store_intelligence_api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist SQLite database file
+      - ./store_intelligence.db:/store-intelligence/store_intelligence.db
+      # Mount the project directory so the container can access pos_transactions.csv and images
+      - ./:/store-intelligence
+    environment:
+      - POS_CSV_PATH=/store-intelligence/pos_transactions.csv
+    restart: always

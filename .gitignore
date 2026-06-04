@@ -1,0 +1,21 @@
+# Datasets and large files
+*.zip
+*.csv
+*.jsonl
+*.pdf
+*.exe
+Store 1/
+Store 2/
+
+# Python / Project specific
+venv/
+.pytest_cache/
+.coverage
+*.db
+*.pt
+__pycache__/
+*.pyc
+
+# IDEs
+.vscode/
+.idea/
