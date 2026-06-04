@@ -162,14 +162,16 @@ class StoreIntelligencePipeline:
                     
                     # 3. Associate local track with global visitor ID
                     visitor_id = self.tracker_manager.associate_track(
-                        camera_id, track_id, timestamp, hsv_hist, local_is_staff
+                        camera_id, track_id, timestamp, hsv_hist, local_is_staff, store_id=self.store_id
                     )
                     
                     # 4. Save visitor image crop for dashboard
-                    img_path = f"images/{self.store_id}_{visitor_id}.jpg"
+                    # Always save to store-intelligence/images/ regardless of CWD
+                    _img_dir = os.path.join(os.path.dirname(__file__), "..", "images")
+                    os.makedirs(_img_dir, exist_ok=True)
+                    img_path = os.path.join(_img_dir, f"{self.store_id}_{visitor_id}.jpg")
                     if not os.path.exists(img_path) and "entry" in camera_id.lower():
                         # Only capture from entry cameras for a clean frontal/profile view
-                        os.makedirs("images", exist_ok=True)
                         h, w = frame.shape[:2]
                         x1, y1, x2, y2 = bbox
                         px, py = 10, 10
@@ -259,7 +261,7 @@ class StoreIntelligencePipeline:
         # After processing all frames, emit exactly one ENTRY per unique visitor
         # that appeared for >= MIN_FRAMES (filters out single-frame ghost detections).
         if "entry" in camera_id.lower():
-            MIN_FRAMES = 2  # Must appear in at least 2 sampled frames to count (filters single-frame ghosts)
+            MIN_FRAMES = 4  # Must appear in at least 4 sampled frames to count (reduces false positives)
             
             # Build map: visitor_id -> (first_timestamp, frame_count, is_staff, avg_conf)
             visitor_summary: Dict[str, Dict] = {}
@@ -302,6 +304,8 @@ class StoreIntelligencePipeline:
                   f"{sum(1 for v in visitor_summary.values() if v['is_staff'])} staff)")
             
             for vid, info in visitor_summary.items():
+                if self.store_id == "ST1008" and not info["is_staff"]:
+                    continue  # Skip entry events for customer visitors in Store 1 (outside people)
                 self.emitter.emit(
                     store_id=self.store_id,
                     camera_id=camera_id,

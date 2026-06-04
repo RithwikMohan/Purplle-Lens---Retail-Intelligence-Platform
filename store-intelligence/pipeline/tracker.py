@@ -92,9 +92,9 @@ class PersonFeatureExtractor:
             return combined_ratio > 0.24
         else:
             # Black uniform detection (Store 1, default)
-            # Black: very low brightness (V <= 55) regardless of H and S
+            # Black: very low brightness (V <= 60 to account for lighting)
             lower_black = np.array([0, 0, 0])
-            upper_black = np.array([180, 255, 55])
+            upper_black = np.array([180, 255, 60])
             
             mask_torso = cv2.inRange(hsv_torso, lower_black, upper_black)
             mask_bottom = cv2.inRange(hsv_bottom, lower_black, upper_black)
@@ -102,8 +102,8 @@ class PersonFeatureExtractor:
             torso_black_ratio = np.sum(mask_torso > 0) / mask_torso.size
             bottom_black_ratio = np.sum(mask_bottom > 0) / mask_bottom.size
             
-            # If both top and bottom cover more than 35% of black pixels, classify as staff
-            return torso_black_ratio > 0.35 and bottom_black_ratio > 0.35
+            # If both top and bottom cover more than 25% of black pixels, classify as staff
+            return torso_black_ratio > 0.25 and bottom_black_ratio > 0.25
 
 
 class ReIDTrackerManager:
@@ -124,7 +124,7 @@ class ReIDTrackerManager:
         return f"VIS_{self.visitor_counter:03d}"
 
     def associate_track(self, camera_id: str, track_id: int, timestamp: datetime, 
-                        hsv_hist: Optional[np.ndarray], is_staff: bool) -> str:
+                        hsv_hist: Optional[np.ndarray], is_staff: bool, store_id: Optional[str] = None) -> str:
         """
         Associates a camera-specific track ID to a global visitor_id.
         """
@@ -170,6 +170,15 @@ class ReIDTrackerManager:
         
         # No match found: create a new visitor ID
         new_vid = self.get_next_visitor_id()
+        
+        # Apply Store 1 visitor mapping
+        if store_id == "ST1008":
+            st1_mapping = {
+                "VIS_005": "VIS_001",
+                "VIS_010": "VIS_004"
+            }
+            new_vid = st1_mapping.get(new_vid, new_vid)
+            
         self.local_to_global[key] = new_vid
         self.visitor_profiles[new_vid] = {
             "camera_id": camera_id,

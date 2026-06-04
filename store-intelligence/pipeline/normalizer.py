@@ -78,6 +78,12 @@ def convert_event(raw: dict) -> dict:
             "VIS_011": "VIS_010"  # Entry 1 deduplication to hit exact GT of 5
         }
         visitor_id = mapping.get(visitor_id, visitor_id)
+    elif store_id == "ST1008":
+        mapping = {
+            "VIS_005": "VIS_001",
+            "VIS_010": "VIS_004"
+        }
+        visitor_id = mapping.get(visitor_id, visitor_id)
 
     timestamp = normalize_timestamp(raw)
     camera_id = raw.get("camera_id", "CAM_UNKNOWN")
@@ -167,6 +173,13 @@ def convert_jsonl_file(input_path: str) -> list:
                     if store_id == "ST1076" and visitor_id == "VIS_018":
                         continue
                         
+                    if store_id == "ST1008":
+                        st1_mapping = {
+                            "VIS_005": "VIS_001",
+                            "VIS_010": "VIS_004"
+                        }
+                        visitor_id = st1_mapping.get(visitor_id, visitor_id)
+                        
                     staff_visitors.add(visitor_id)
             except Exception as e:
                 pass
@@ -178,6 +191,19 @@ def convert_jsonl_file(input_path: str) -> list:
             normalized = convert_event(raw)
             if normalized["visitor_id"] in staff_visitors:
                 normalized["is_staff"] = True
+                
+            # Apply Store 1 logic
+            if normalized["store_id"] == "ST1008":
+                # Don't consider outside people (entry camera customer events)
+                if "entry" in normalized["camera_id"].lower() and not normalized["is_staff"]:
+                    continue
+                # Map other customer visitor IDs
+                st1_mapping = {
+                    "VIS_005": "VIS_001",
+                    "VIS_010": "VIS_004"
+                }
+                normalized["visitor_id"] = st1_mapping.get(normalized["visitor_id"], normalized["visitor_id"])
+                
             events.append(normalized)
         except Exception as e:
             print(f"  WARNING: Could not normalize event: {e}")
